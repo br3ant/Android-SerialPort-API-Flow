@@ -9,11 +9,12 @@ import java.io.IOException
 
 
 class SerialPortFlow(
-    path: String = "/system/bin/su",
-    baudrate: Int = 9600,
-    parity: Int = 0,
-    dataBits: Int = 8,
-    stopBits: Int = 8
+    val path: String = "/system/bin/su",
+    val baudrate: Int = 9600,
+    val parity: Int = 0,
+    val dataBits: Int = 8,
+    val stopBits: Int = 1,
+    val flag: Int = 0
 ) {
 
     private val serialPort: SerialPort
@@ -31,6 +32,7 @@ class SerialPortFlow(
             // 停止位，默认1；1:1位停止位；2:2位停止位
             // Stop bit, default 1; 1:1 stop bit; 2: 2 stop bit
             .stopBits(stopBits)
+            .flags(0)
             .build()
     }
 
@@ -65,5 +67,8 @@ class SerialPortFlow(
         serialPort.tryClose()
     }
 
+    override fun toString(): String {
+        return "SerialPort(path='$path', baudrate=$baudrate, parity=$parity, dataBits=$dataBits, stopBits=$stopBits, flag=$flag)"
+    }
 }
 
