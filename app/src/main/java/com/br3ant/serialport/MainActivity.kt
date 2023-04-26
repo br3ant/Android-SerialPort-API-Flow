@@ -121,11 +121,11 @@ class MainActivity : ComponentActivity() {
                                     modifier = Modifier,
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                 ) {
-                                    Button(onClick = { viewModel.sendCmd(FindAllCard) }) {
+                                    Button(onClick = { viewModel.connect(path, baudrate) }) {
                                         Text(text = "连接")
                                     }
                                     Spacer(modifier = Modifier.weight(1f))
-                                    Button(onClick = { viewModel.sendCmd(FindNotIDLE) }) {
+                                    Button(onClick = { viewModel.disConnect() }) {
                                         Text(text = "断开")
                                     }
                                 }
