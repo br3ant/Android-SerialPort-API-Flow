@@ -9,6 +9,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -43,9 +44,15 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.br3ant.serialport.profile.Anticoll
+import com.br3ant.serialport.profile.Authentication
+import com.br3ant.serialport.profile.Device
+import com.br3ant.serialport.profile.FindAllCard
+import com.br3ant.serialport.profile.FindNotIDLE
+import com.br3ant.serialport.profile.LoadKey
+import com.br3ant.serialport.profile.Read
+import com.br3ant.serialport.profile.SelectCard
 import com.br3ant.serialport.ui.theme.AndroidSerialPortAPIFlowTheme
-import com.br3ant.utils.toBytes
-import com.br3ant.utils.toHexString
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -70,88 +77,83 @@ class MainActivity : ComponentActivity() {
 //                    padding.calculateTopPadding()
 
                     Column(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(10.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
 
-                        Text(
-                            text = "串口参数: ${viewModel.port}",
-                            color = MaterialTheme.colors.primary,
-                            fontSize = 20.sp,
-                            fontStyle = FontStyle.Italic
-                        )
-
-                        Text(
-                            text = "send -> ${viewModel.sendData}",
-                            color = MaterialTheme.colors.error,
-                            fontSize = 25.sp,
-                            fontStyle = FontStyle.Italic
-                        )
-
-                        Text(
-                            text = "response <- ${viewModel.receiveData}",
-                            color = MaterialTheme.colors.error,
-                            fontSize = 25.sp,
-                            fontStyle = FontStyle.Italic
-                        )
-
-
-                        Row(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier.align(Alignment.Start),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
                             Column(
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier
+                                    .width(IntrinsicSize.Max)
+                                    .border(1.dp, MaterialTheme.colors.primary)
+                                    .padding(20.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
+                                var path by remember { mutableStateOf("/dev/ttysWK1") }
+                                var baudrate by remember { mutableStateOf(9600) }
 
-                                Button(onClick = { viewModel.send("02 00 02 2F 40 6D") }) {
-                                    Text(text = "到读卡位：02 00 02 2F 40 6D")
-                                }
+                                OutlinedTextField(value = path, onValueChange = { value ->
+                                    path = value.trim()
+                                }, label = { Text(text = "串口地址") })
 
-                                Button(onClick = { viewModel.send("02 00 02 2F 43 6E") }) {
-                                    Text(text = "吐卡：02 00 02 2F 43 6E")
-                                }
+                                OutlinedTextField(
+                                    value = baudrate.toString(),
+                                    onValueChange = { value ->
+                                        baudrate = value.toInt()
+                                    },
+                                    label = { Text(text = "比特率") })
 
-                                Button(onClick = { viewModel.send("02 00 02 2F 42 6F") }) {
-                                    Text(text = "回收：02 00 02 2F 42 6F")
-                                }
+                                Text(
+                                    text = if (viewModel.portIsConnect) "已连接" else "已断开",
+                                    color = Color.Red,
+                                    fontSize = 20.sp,
+                                    fontStyle = FontStyle.Italic
+                                )
 
-                                Button(onClick = { viewModel.send("02 00 02 2F 45 68") }) {
-                                    Text(text = "查询状态：02 00 02 2F 45 68")
-                                }
-
-                                Button(onClick = { viewModel.send("02 00 02 31 52 61") }) {
-                                    Text(text = "寻卡：02 00 02 31 52 61")
-                                }
-                                Button(onClick = { viewModel.send("02 00 02 32 93 A3") }) {
-                                    Text(text = "防碰撞：02 00 02 32 93 A3")
+                                Row(
+                                    modifier = Modifier,
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                ) {
+                                    Button(onClick = { viewModel.sendCmd(FindAllCard) }) {
+                                        Text(text = "连接")
+                                    }
+                                    Spacer(modifier = Modifier.weight(1f))
+                                    Button(onClick = { viewModel.sendCmd(FindNotIDLE) }) {
+                                        Text(text = "断开")
+                                    }
                                 }
                             }
 
                             Column(
-                                modifier = Modifier.weight(1f),
-                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier
+                                    .width(400.dp)
+                                    .border(1.dp, MaterialTheme.colors.primary)
+                                    .padding(20.dp),
+                                horizontalAlignment = Alignment.Start,
                                 verticalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                var input by remember { mutableStateOf("") }
-                                OutlinedTextField(
-                                    value = input,
-                                    onValueChange = { input = it },
-                                    label = {
-                                        Text(text = "请输入十六进制命令")
-                                    })
-
-                                Button(onClick = {
-                                    if (input.isEmpty() || input.length % 2 != 0) {
-                                        toast(scope, scaffoldState, "请输入正确十六进制的命令")
-                                    } else {
-                                        viewModel.send(input)
-                                    }
-                                }) {
-                                    Text(text = "发送")
+                                Button(onClick = { viewModel.sendCmd(Device("40")) }) {
+                                    Text(text = "到读卡位")
+                                }
+                                Button(onClick = { viewModel.sendCmd(Device("42")) }) {
+                                    Text(text = "回收")
+                                }
+                                Button(onClick = { viewModel.sendCmd(Device("43")) }) {
+                                    Text(text = "吐卡")
+                                }
+                                Button(onClick = { viewModel.sendCmd(Device("45")) }) {
+                                    Text(text = "查询状态")
                                 }
                             }
                         }
+
 
                         Row(
                             modifier = Modifier
@@ -176,7 +178,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        var loadKey by remember { mutableStateOf("FFFFFFFFFF") }
+                        var loadKey by remember { mutableStateOf("FFFFFFFFFFFF") }
                         var areaCode by remember { mutableStateOf(1) }
                         var blockCode by remember { mutableStateOf(0) }
                         Row(
@@ -209,57 +211,101 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 10.dp),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Button(onClick = { viewModel.sendCmd("31", "52") }) {
+                            Button(onClick = { viewModel.sendCmd(FindAllCard) }) {
                                 Text(text = "寻找所有卡")
                             }
-                            Button(onClick = { viewModel.sendCmd("31", "26") }) {
+                            Button(onClick = { viewModel.sendCmd(FindNotIDLE) }) {
                                 Text(text = "寻找空闲卡")
                             }
+//                            var card by remember { mutableStateOf("B1E5AACF") }
                             var card by remember { mutableStateOf("") }
                             Button(onClick = {
-                                viewModel.sendCmd("32", "93") { response ->
-                                    card = response.takeIf { it.startsWith("00") }?.substring(2, 10)
-                                        ?: ""
+                                viewModel.sendCmd(Anticoll) { response ->
+                                    card = response.data
                                 }
                             }) {
                                 Text(text = "防碰撞")
                             }
                             Button(onClick = {
-                                if (card.length != 8) {
+                                if (card.isEmpty()) {
                                     toast(scope, scaffoldState, "请先防碰撞获取卡号")
                                 } else {
-                                    viewModel.sendCmd("33", "93$card")
+                                    viewModel.sendCmd(SelectCard(card))
                                 }
                             }) {
                                 Text(text = "选卡")
                             }
-                            Button(onClick = { viewModel.sendCmd("35", loadKey) }) {
+                            Button(onClick = { viewModel.sendCmd(LoadKey(loadKey)) }) {
                                 Text(text = "加载秘钥")
                             }
                             Button(onClick = {
-                                if (card.length != 8) {
+                                if (card.isEmpty()) {
                                     toast(scope, scaffoldState, "请先防碰撞获取卡号")
                                 } else {
-                                    viewModel.sendCmd(
-                                        "37",
-                                        "60${blockCode.toLong().toBytes().toHexString()}$card"
-                                    )
+                                    viewModel.sendCmd(Authentication(blockCode, card))
                                 }
                             }) {
                                 Text(text = "校验秘钥")
                             }
+
+                            Text(text = "内码：")
+                            Text(text = card, color = Color.Red)
+                        }
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+
+                        var blockData by remember { mutableStateOf("") }
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 10.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+
                             Button(onClick = {
-                                viewModel.sendCmd(
-                                    "38",
-                                    "${blockCode.toLong().toBytes().toHexString()}${
-                                        areaCode.toLong().toBytes().toHexString()
-                                    }"
-                                )
+                                viewModel.sendCmd(Read(blockCode, areaCode)) {
+                                    blockData = it.data
+                                }
                             }) {
                                 Text(text = "读卡")
                             }
+                        }
+
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 10.dp)
+                        ) {
+
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 10.dp),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+
+                                Text(text = "块数据：")
+
+                                Button(onClick = {
+                                    blockData = ""
+                                }) {
+                                    Text(text = "清空")
+                                }
+                            }
+
+                            Text(
+                                text = blockData,
+                                modifier = Modifier
+                                    .width(500.dp)
+                                    .height(30.dp)
+                                    .border(width = 1.dp, color = Color.Black)
+                            )
                         }
                     }
                 }
